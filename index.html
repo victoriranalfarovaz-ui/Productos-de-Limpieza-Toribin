@@ -173,6 +173,17 @@
   box-shadow: 0 10px 30px rgba(0,255,240,.25);
 }
 
+.btn-soft{
+  opacity: .75;
+}
+.btn-soft:hover{
+  opacity: 1;
+}
+
+/* Advertencia al pasar el mouse */
+.btn-warning:hover{
+  box-shadow: 0 0 0 2px rgba(255, 80, 80, 0.9);
+}    
     
 .icon-badge{
   display:inline-flex;
@@ -279,7 +290,7 @@
 
     <div class="totalBox">
       <strong>Total: $<span id="total">0.00</span></strong>
-      <button id="vaciar" class="btn-primary">Vaciar carrito</button>
+      <button id="vaciar" class="btn-primary btn-soft btn-warning">Vaciar carrito</button>
     </div>
 
     <div style="margin-top: 12px;">
