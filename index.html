@@ -193,6 +193,16 @@
   color: var(--muted);
 }
 
+.tag {
+  transition: all 0.25s ease;
+}
+
+.tag:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px rgba(0, 255, 240, 0.35);
+}
+
+
 .tag.limpieza{
   background: rgba(0, 210, 200, 0.25);
   color: #eaffff;
@@ -207,6 +217,12 @@
   background: rgba(0, 210, 200, 0.25);
   color: #eaffff;
   border: 1px solid rgba(0, 210, 200, 0.5);
+}
+
+.tag.limpieza:hover,
+.tag.ropa:hover,
+.tag.suavizante:hover {
+  background: rgba(0, 255, 240, 0.45);
 }
 
 
