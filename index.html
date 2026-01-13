@@ -757,6 +757,11 @@ btnVistaAdmin.addEventListener("click", () => {
         return;
       }
 
+      // 🔎 MINICHECK (solo para pruebas)
+console.log("Pedido recién creado:", pedido);
+console.log("Todos los pedidos:", pedidos);
+console.log("LocalStorage:", JSON.parse(localStorage.getItem(STORAGE_KEY)));
+
       const total = carrito.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
 
       const pedido = {
