@@ -909,25 +909,26 @@ btnVistaAdmin.addEventListener("click", () => {
 }
 
 function armarMensajeWhatsApp(pedido){
-  const itemsTxt = pedido.items
+  const itemsTxt = (pedido.items || [])
     .map(i => `- ${i.nombre} x${i.cantidad} ($${i.precioUnitario.toFixed(2)} c/u)`)
     .join("\n");
 
   const msg =
-` *NUEVO PEDIDO* ${pedido.id}
- ${formatearFecha(pedido.creadoEn)}
+`*NUEVO PEDIDO* ${pedido.id}
+${formatearFecha(pedido.creadoEn)}
 
- *Cliente:* ${pedido.comprador.nombre}
- *Tel:* ${pedido.comprador.telefono}
- *Dirección:* ${pedido.comprador.direccion}
+*Cliente:* ${pedido.comprador.nombre}
+*Tel:* ${pedido.comprador.telefono}
+*Dirección:* ${pedido.comprador.direccion}
 
+*Items:*
+${itemsTxt}
 
- *Total:* $${pedido.total.toFixed(2)}
- *Estado:* ${pedido.estado}`;
+*Total:* $${pedido.total.toFixed(2)}
+*Estado:* ${pedido.estado}`;
 
   return msg;
 }
-
 
     // Iniciar
   cargarEstado();
