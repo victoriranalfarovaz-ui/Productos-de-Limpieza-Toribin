@@ -163,6 +163,17 @@
   margin-bottom: 10px;
 }
 
+.product-img{
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.product-img:hover{
+  transform: scale(1.03);
+  box-shadow: 0 10px 30px rgba(0,255,240,.25);
+}
+
+    
 .icon-badge{
   display:inline-flex;
   align-items:center;
@@ -602,7 +613,7 @@ btnVistaAdmin.addEventListener("click", () => {
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
-      <img class="product-img" src="${p.img}" alt="${p.nombre}" />
+      <img class="product-img add-by-image" data-id="${p.id}" src="${p.img}" alt="${p.nombre}" />
 
       <div class="row">
         <div style="display:flex; align-items:center; gap:10px;">
@@ -907,6 +918,16 @@ function armarMensajeWhatsApp(pedido){
   renderCarrito();
   renderPedidos();
   mostrarCliente();
+
+    document.addEventListener("click", function(e) {
+  const img = e.target.closest(".add-by-image");
+  if (!img) return;
+
+  const id = img.getAttribute("data-id");
+  const btn = document.querySelector(`button[data-id="${id}"]`);
+  if (btn) btn.click();
+});
+
 
   </script>
 
