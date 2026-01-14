@@ -802,61 +802,6 @@ btnVistaAdmin.addEventListener("click", async () => {
 
   renderCarrito();
 }
-
-
-    function cambiarCantidad(productoId, delta) {
-      const item = carrito.find(i => i.productoId === productoId);
-      if (!item) return;
-      item.cantidad += delta;
-      if (item.cantidad <= 0) carrito = carrito.filter(i => i.productoId !== productoId);
-      renderCarrito();
-    }
-
-    function vaciarCarrito() {
-      carrito = [];
-      renderCarrito();
-    }
-
-    function renderCarrito() {
-      if (carrito.length === 0) {
-        carritoItemsEl.innerHTML = `<p class="muted">Tu carrito está vacío.</p>`;
-      } else {
-        carritoItemsEl.innerHTML = "";
-        carrito.forEach(item => {
-          const subtotal = item.precioUnitario * item.cantidad;
-
-          const row = document.createElement("div");
-          row.className = "item";
-          row.innerHTML = `
-            <div>
-              <strong>${item.nombre}</strong><br>
-              <span class="muted">$${item.precioUnitario.toFixed(2)} c/u</span>
-            </div>
-
-            <div class="qtyBtns">
-              <button aria-label="menos">-</button>
-              <span class="pill">${item.cantidad}</span>
-              <button aria-label="más">+</button>
-            </div>
-
-            <div><strong>$${subtotal.toFixed(2)}</strong></div>
-            <div><button aria-label="quitar">Quitar</button></div>
-          `;
-
-          const [btnMenos, btnMas] = row.querySelectorAll(".qtyBtns button");
-          const btnQuitar = row.querySelector('button[aria-label="quitar"]');
-
-          btnMenos.addEventListener("click", () => cambiarCantidad(item.productoId, -1));
-          btnMas.addEventListener("click", () => cambiarCantidad(item.productoId, +1));
-          btnQuitar.addEventListener("click", () => {
-            carrito = carrito.filter(i => i.productoId !== item.productoId);
-            renderCarrito();
-          });
-
-          carritoItemsEl.appendChild(row);
-        });
-      }
-
       const total = carrito.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
       totalEl.textContent = total.toFixed(2);
 
