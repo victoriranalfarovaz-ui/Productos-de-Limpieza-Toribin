@@ -428,6 +428,27 @@ function guardarEstado() {
   }
 }
 
+    async function cargarPedidosCentral() {
+  const res = await fetch("/api/pedidos");
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "No se pudieron cargar pedidos");
+
+  // Convertimos lo que viene del sheet a tu formato simple para mostrar
+  pedidos = (data.pedidos || []).map(p => ({
+    id: p.pedido_id,
+    estado: p.estado || "pendiente",
+    creadoEn: p.fecha,
+    total: Number(p.total || 0),
+    comprador: {
+      nombre: p.cliente || "",
+      telefono: p.telefono || "",
+      direccion: p.direccion || ""
+    },
+    items: (p.items || "").split(" | ").filter(Boolean).map(txt => ({ nombre: txt, cantidad: 1, precioUnitario: 0 }))
+  }));
+
+  renderPedidos();
+}
 
 function cargarEstado() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -819,7 +840,9 @@ btnConfirmar.addEventListener("click", async (e) => {
     guardarEstado();
 
    // guarda central
-await guardarPedidoEnSheets(pedido);
+    await guardarPedidoEnSheets(pedido);
+
+    await cargarPedidosCentral();
 
 // WhatsApp
 const texto = encodeURIComponent(armarMensajeWhatsApp(pedido));
