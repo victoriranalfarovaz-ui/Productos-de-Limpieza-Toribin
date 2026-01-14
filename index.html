@@ -396,6 +396,18 @@ async function cargarPedidosCentral() {
 
   renderPedidos();
 }   
+
+async function actualizarEstadoEnSheets(pedidoId, estado) {
+  const res = await fetch(SHEETS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ accion: "actualizarEstado", pedidoId, estado })
+  });
+
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "No se pudo actualizar estado");
+}
+
     // Productos (puedes cambiarlos)
     const productos = [
   {
@@ -802,16 +814,6 @@ btnVistaAdmin.addEventListener("click", async () => {
 
   renderCarrito();
 }
-      const total = carrito.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
-      totalEl.textContent = total.toFixed(2);
-
-      const contador = carrito.reduce((acc, item) => acc + item.cantidad, 0);
-      contadorEl.textContent = contador;
-
-      guardarEstado();
-
-      
-    }
 
     // Checkout
     btnCheckout.addEventListener("click", () => {
@@ -972,26 +974,34 @@ window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
     // Cambiar estado (solo activos)
     const select = div.querySelector(`select[data-id="${p.id}"]`);
     if (select) {
-      select.addEventListener("change", (e) => {
-        p.estado = e.target.value;
-        guardarEstado();
-        renderPedidos();
-      });
-    }
+      select.addEventListener("change", async (e) => {
+  const nuevoEstado = e.target.value;
 
-    // Archivar (solo activos)
+  try {
+    await actualizarEstadoEnSheets(p.id, nuevoEstado);
+    await cargarPedidosCentral(); // refresca desde Sheets
+  } catch (err) {
+    console.error(err);
+    alert("No se pudo actualizar el estado en el sistema central.");
+    // revertir visualmente
+    e.target.value = p.estado;
+  }
+});
+
     const btnArch = div.querySelector(`[data-archive="${p.id}"]`);
-    if (btnArch) {
-      btnArch.addEventListener("click", () => {
-        if (!confirm("¿Archivar este pedido?")) return;
-        p.estado = "archivado";
-        p.archivadoEn = new Date().toISOString();
-        p.archivadoPor = "admin";
-        guardarEstado();
-        renderPedidos();
-      });
-    }
+if (btnArch) {
+  btnArch.addEventListener("click", async () => {
+    if (!confirm("¿Archivar este pedido?")) return;
 
+    try {
+      await actualizarEstadoEnSheets(p.id, "archivado");
+      await cargarPedidosCentral(); // vuelve a traer la lista desde Sheets
+    } catch (err) {
+      console.error(err);
+      alert("No se pudo archivar en el sistema central.");
+    }
+  });
+}
     // Restaurar (solo historial)
     const btnRes = div.querySelector(`[data-restore="${p.id}"]`);
     if (btnRes) {
