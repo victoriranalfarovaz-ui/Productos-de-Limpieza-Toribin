@@ -488,88 +488,6 @@ function formatearFecha(iso) {
     minute: "2-digit"
   });
 }
-function cambiarCantidad(productoId, delta) {
-  const item = carrito.find(i => i.productoId === productoId);
-  if (!item) return;
-
-  item.cantidad += delta;
-
-  // Si baja a 0 o menos, lo quitamos del carrito
-  if (item.cantidad <= 0) {
-    carrito = carrito.filter(i => i.productoId !== productoId);
-  }
-
-  renderCarrito();
-}
-
-function renderCarrito() {
-  // Si no existe el contenedor, no hacemos nada (evita errores)
-  if (!carritoItemsEl || !totalEl || !contadorEl) return;
-
-  if (!Array.isArray(carrito) || carrito.length === 0) {
-    carritoItemsEl.innerHTML = `<p class="muted">Tu carrito está vacío.</p>`;
-  } else {
-    carritoItemsEl.innerHTML = "";
-
-    carrito.forEach(item => {
-      const subtotal = (Number(item.precioUnitario) || 0) * (Number(item.cantidad) || 0);
-
-      const row = document.createElement("div");
-      row.className = "item";
-      row.innerHTML = `
-        <div>
-          <strong>${item.nombre}</strong><br>
-          <span class="muted">$${(Number(item.precioUnitario) || 0).toFixed(2)} c/u</span>
-        </div>
-
-        <div class="qtyBtns">
-          <button type="button" aria-label="menos">-</button>
-          <span class="pill">${item.cantidad}</span>
-          <button type="button" aria-label="más">+</button>
-        </div>
-
-        <div><strong>$${subtotal.toFixed(2)}</strong></div>
-        <div><button type="button" aria-label="quitar">Quitar</button></div>
-      `;
-
-      const btnMenos = row.querySelector('button[aria-label="menos"]');
-      const btnMas = row.querySelector('button[aria-label="más"]');
-      const btnQuitar = row.querySelector('button[aria-label="quitar"]');
-
-      btnMenos.addEventListener("click", () => cambiarCantidad(item.productoId, -1));
-      btnMas.addEventListener("click", () => cambiarCantidad(item.productoId, +1));
-      btnQuitar.addEventListener("click", () => {
-        carrito = carrito.filter(i => i.productoId !== item.productoId);
-        renderCarrito();
-      });
-
-      carritoItemsEl.appendChild(row);
-    });
-  }
-
-  // Total
-  const total = (carrito || []).reduce((acc, item) => {
-    return acc + (Number(item.precioUnitario) || 0) * (Number(item.cantidad) || 0);
-  }, 0);
-  totalEl.textContent = total.toFixed(2);
-
-  // Contador de piezas
-  const contador = (carrito || []).reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
-  contadorEl.textContent = contador;
-
-  // Guardar estado
-  guardarEstado();
-}
-
-// Vaciar carrito con confirmación (si quieres que sea igual que antes)
-btnVaciar?.addEventListener("click", () => {
-  const ok = confirm("¿Seguro que quieres vaciar el carrito? Esta acción no se puede deshacer.");
-  if (!ok) return;
-
-  carrito = [];
-  renderCarrito(); // también guarda estado
-});
-
     // Elementos
     const listaProductosEl = document.getElementById("lista-productos");
     const carritoItemsEl = document.getElementById("carrito-items");
@@ -594,6 +512,88 @@ btnVaciar?.addEventListener("click", () => {
     const buscadorEl = document.getElementById("buscador");
     const btnHistorial = document.getElementById("btnHistorial");
     const btnExportar = document.getElementById("btnExportar");
+
+    function cambiarCantidad(productoId, delta) {
+  const item = carrito.find(i => i.productoId === productoId);
+  if (!item) return;
+
+  item.cantidad += delta;
+
+  if (item.cantidad <= 0) {
+    carrito = carrito.filter(i => i.productoId !== productoId);
+  }
+
+  renderCarrito();
+}
+
+function vaciarCarrito() {
+  carrito = [];
+  renderCarrito();
+}
+
+function renderCarrito() {
+  if (!Array.isArray(carrito) || carrito.length === 0) {
+    carritoItemsEl.innerHTML = `<p class="muted">Tu carrito está vacío.</p>`;
+  } else {
+    carritoItemsEl.innerHTML = "";
+
+    carrito.forEach(item => {
+      const precio = Number(item.precioUnitario) || 0;
+      const cant = Number(item.cantidad) || 0;
+      const subtotal = precio * cant;
+
+      const row = document.createElement("div");
+      row.className = "item";
+      row.innerHTML = `
+        <div>
+          <strong>${item.nombre}</strong><br>
+          <span class="muted">$${precio.toFixed(2)} c/u</span>
+        </div>
+
+        <div class="qtyBtns">
+          <button type="button" aria-label="menos">-</button>
+          <span class="pill">${cant}</span>
+          <button type="button" aria-label="más">+</button>
+        </div>
+
+        <div><strong>$${subtotal.toFixed(2)}</strong></div>
+        <div><button type="button" aria-label="quitar">Quitar</button></div>
+      `;
+
+      row.querySelector('button[aria-label="menos"]')
+        .addEventListener("click", () => cambiarCantidad(item.productoId, -1));
+
+      row.querySelector('button[aria-label="más"]')
+        .addEventListener("click", () => cambiarCantidad(item.productoId, +1));
+
+      row.querySelector('button[aria-label="quitar"]')
+        .addEventListener("click", () => {
+          carrito = carrito.filter(i => i.productoId !== item.productoId);
+          renderCarrito();
+        });
+
+      carritoItemsEl.appendChild(row);
+    });
+  }
+
+  const total = (carrito || []).reduce((acc, item) => {
+    return acc + (Number(item.precioUnitario) || 0) * (Number(item.cantidad) || 0);
+  }, 0);
+
+  totalEl.textContent = total.toFixed(2);
+
+  const contador = (carrito || []).reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
+  contadorEl.textContent = contador;
+
+  guardarEstado();
+}
+
+// ✅ Listener UNA sola vez (sin ? porque el botón sí existe)
+btnVaciar.addEventListener("click", () => {
+  const ok = confirm("¿Seguro que quieres vaciar el carrito? Esta acción no se puede deshacer.");
+  if (!ok) return;
+  vaciarCarrito();
+});
 
     function exportarPedidosCSV() {
   if (!pedidos || pedidos.length === 0) {
@@ -1102,14 +1102,6 @@ ${itemsTxt}
   const id = img.getAttribute("data-id");
   const btn = document.querySelector(`button[data-id="${id}"]`);
   if (btn) btn.click();
-});
-    
-btnVaciar.addEventListener("click", () => {
-  const ok = confirm("¿Seguro que quieres vaciar el carrito? Esta acción no se puede deshacer.");
-  if (!ok) return;
-
-  carrito = [];
-  renderCarrito(); // también guarda estado
 });
 
   </script>
