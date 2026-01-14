@@ -409,15 +409,15 @@ function guardarEstado() {
   try {
     await fetch(SHEETS_WEBAPP_URL, {
       method: "POST",
+      mode: "no-cors",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(pedido)
     });
-    console.log("Pedido enviado a Google Sheets");
+    console.log("Pedido enviado a Sheets (no-cors)");
   } catch (err) {
     console.log("Error enviando a Sheets:", err);
   }
 }
-
 
 function cargarEstado() {
   const raw = localStorage.getItem(STORAGE_KEY);
