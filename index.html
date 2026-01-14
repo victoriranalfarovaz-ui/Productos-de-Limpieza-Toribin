@@ -342,15 +342,17 @@
 
   <script>
 
+  const SHEETS_URL = "https://script.google.com/macros/s/AKfycbywpjUhVEjMGrI4yGkXu1RcmXF51A4ze2_e81lzvbKnkcP3jV0-uD3D_1p6x8MgSGZN/exec";
+
+
    const WHATSAPP_NEGOCIO = "525660578484";
 
-// guarda pedido central
 async function guardarPedidoEnSheets(pedido) {
   try {
-    const res = await fetch("/api/pedido", {
+    const res = await fetch(SHEETS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(pedido)
+      body: JSON.stringify({ accion: "guardarPedido", pedido })
     });
 
     const data = await res.json();
@@ -362,9 +364,8 @@ async function guardarPedidoEnSheets(pedido) {
   }
 }
 
-// carga pedidos central (admin)
 async function cargarPedidosCentral() {
-  const res = await fetch("/api/pedidos");
+  const res = await fetch(`${SHEETS_URL}?accion=obtenerPedidos`);
   const data = await res.json();
 
   if (!data.ok) throw new Error(data.error || "No se pudieron cargar pedidos");
@@ -386,8 +387,7 @@ async function cargarPedidosCentral() {
   }));
 
   renderPedidos();
-}
-    
+}   
     // Productos (puedes cambiarlos)
     const productos = [
   {
