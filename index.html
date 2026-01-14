@@ -818,12 +818,13 @@ btnConfirmar.addEventListener("click", async (e) => {
     pedidos.unshift(pedido);
     guardarEstado();
 
-    // guarda central
-    await guardarPedidoEnSheets(pedido);
+   // guarda central
+await guardarPedidoEnSheets(pedido);
 
-    // WhatsApp
-    const texto = encodeURIComponent(armarMensajeWhatsApp(pedido));
-    window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
+// WhatsApp
+const texto = encodeURIComponent(armarMensajeWhatsApp(pedido));
+window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
+
 
     // limpiar
     vaciarCarrito();
@@ -994,7 +995,14 @@ ${itemsTxt}
   const btn = document.querySelector(`button[data-id="${id}"]`);
   if (btn) btn.click();
 });
+    
+btnVaciar.addEventListener("click", () => {
+  const ok = confirm("¿Seguro que quieres vaciar el carrito? Esta acción no se puede deshacer.");
+  if (!ok) return;
 
+  carrito = [];
+  renderCarrito(); // también guarda estado
+});
 
   </script>
 
