@@ -344,8 +344,6 @@
 
     const WHATSAPP_NEGOCIO = "525660578484"; 
 // Formato: 52 + tu número (sin +, sin espacios). Ej: México 52 + 55xxxxxxx
-    
-   const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxY61sFgOQ6udjXE58B1_DfJFG5GDmxDCnep5o8MqIDQyiqCMZVeZtv-60ItWg8Lq2Y/exec";
 
     // Productos (puedes cambiarlos)
     const productos = [
@@ -407,7 +405,7 @@ function guardarEstado() {
 
     async function guardarPedidoEnSheets(pedido) {
   try {
-    const res = await fetch(SHEETS_WEBAPP_URL, {
+    const res = await fetch("/api/pedido", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -415,14 +413,20 @@ function guardarEstado() {
       body: JSON.stringify(pedido)
     });
 
-    const txt = await res.text();
-    console.log("Respuesta de Sheets:", txt);
+    const data = await res.json();
+    console.log("Respuesta API:", data);
+
+    if (!data.ok) {
+      throw new Error(data.error || "No se pudo guardar en Sheets");
+    }
 
   } catch (err) {
-    console.error("Error enviando a Sheets:", err);
+    console.error("Error:", err);
     alert("Error enviando pedido al sistema central");
+    throw err;
   }
 }
+
 
 function cargarEstado() {
   const raw = localStorage.getItem(STORAGE_KEY);
