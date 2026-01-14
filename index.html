@@ -347,6 +347,13 @@
 
    const WHATSAPP_NEGOCIO = "525660578484";
 
+    // Carrito
+    let carrito = [];
+
+    // Pedidos (demo)
+    let pedidos = [];
+    let folio = 1;
+
 
 async function guardarPedidoEnSheets(pedido) {
   try {
@@ -428,15 +435,6 @@ async function cargarPedidosCentral() {
     categoria: "suavizante"
   }
 ];
-
-
-    // Carrito
-    let carrito = [];
-
-    // Pedidos (demo)
-    let pedidos = [];
-    let folio = 1;
-
     const STORAGE_KEY = "mi_tienda_v1";
     const ADMIN_PIN = "1234"; // cámbialo por el que quieras
 
