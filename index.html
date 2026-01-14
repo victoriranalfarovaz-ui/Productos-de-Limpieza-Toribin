@@ -346,6 +346,12 @@
 // Formato: 52 + tu número (sin +, sin espacios). Ej: México 52 + 55xxxxxxx
     const SHEETS_WEBAPP_URL = "/api/pedido";
 
+    await fetch(SHEETS_WEBAPP_URL, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(pedido),
+});
+
     // Productos (puedes cambiarlos)
     const productos = [
   {
