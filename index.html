@@ -763,52 +763,53 @@ btnVistaAdmin.addEventListener("click", () => {
       checkoutFormEl.style.display = "none";
     });
 
-    btnConfirmar.addEventListener("click", () => {
-      const nombre = nombreEl.value.trim();
-      const telefono = telefonoEl.value.trim();
-      const direccion = direccionEl.value.trim();
+    btnConfirmar.addEventListener("click", async () => {
+  const nombre = nombreEl.value.trim();
+  const telefono = telefonoEl.value.trim();
+  const direccion = direccionEl.value.trim();
 
-      if (!nombre || !telefono || !direccion) {
-        alert("Por favor llena nombre, teléfono y dirección.");
-        return;
-      }
+  if (!nombre || !telefono || !direccion) {
+    alert("Por favor llena nombre, teléfono y dirección.");
+    return;
+  }
 
-      // 🔎 MINICHECK (solo para pruebas)
-console.log("Pedido recién creado:", pedido);
-console.log("Todos los pedidos:", pedidos);
-console.log("LocalStorage:", JSON.parse(localStorage.getItem(STORAGE_KEY)));
+  const total = carrito.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
 
-      const total = carrito.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
+  const pedido = {
+    id: `PED-${String(folio).padStart(4, "0")}`,
+    items: carrito.map(i => ({ ...i })),
+    total,
+    comprador: { nombre, telefono, direccion },
+    estado: "pendiente",
+    creadoEn: new Date().toISOString()
+  };
 
-      const pedido = {
-        id: `PED-${String(folio).padStart(4, "0")}`,
-        items: carrito.map(i => ({ ...i })),
-        total,
-        comprador: { nombre, telefono, direccion },
-        estado: "pendiente",
-        creadoEn: new Date().toISOString()
-      };
+  // 🔎 MINICHECK (ahora sí ya existe "pedido")
+  console.log("Pedido recién creado:", pedido);
+  console.log("Todos los pedidos (antes de push):", pedidos);
 
-      folio += 1;
-      pedidos.unshift(pedido);
-      guardarEstado();
-      guardarPedidoEnSheets(pedido);
+  folio += 1;
+  pedidos.unshift(pedido);
+  guardarEstado();
 
-      const texto = encodeURIComponent(armarMensajeWhatsApp(pedido)); 
-      window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
+  // Guardar en Google Sheets (central)
+  await guardarPedidoEnSheets(pedido);
 
+  // Abrir WhatsApp
+  const texto = encodeURIComponent(armarMensajeWhatsApp(pedido));
+  window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
 
+  // limpiar
+  vaciarCarrito();
+  nombreEl.value = "";
+  telefonoEl.value = "";
+  direccionEl.value = "";
+  checkoutFormEl.style.display = "none";
 
-      // limpiar
-      vaciarCarrito();
-      nombreEl.value = "";
-      telefonoEl.value = "";
-      direccionEl.value = "";
-      checkoutFormEl.style.display = "none";
+  renderPedidos();
+  alert(`Pedido creado: ${pedido.id}`);
+});
 
-      renderPedidos();
-      alert(`Pedido creado: ${pedido.id}`);
-    });
 
     btnVaciar.addEventListener("click", () => {
   const ok = confirm("¿Seguro que quieres vaciar el carrito? Esta acción no se puede deshacer.");
