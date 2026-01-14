@@ -490,8 +490,87 @@ function formatearFecha(iso) {
     minute: "2-digit"
   });
 }
+function cambiarCantidad(productoId, delta) {
+  const item = carrito.find(i => i.productoId === productoId);
+  if (!item) return;
 
+  item.cantidad += delta;
 
+  // Si baja a 0 o menos, lo quitamos del carrito
+  if (item.cantidad <= 0) {
+    carrito = carrito.filter(i => i.productoId !== productoId);
+  }
+
+  renderCarrito();
+}
+
+function renderCarrito() {
+  // Si no existe el contenedor, no hacemos nada (evita errores)
+  if (!carritoItemsEl || !totalEl || !contadorEl) return;
+
+  if (!Array.isArray(carrito) || carrito.length === 0) {
+    carritoItemsEl.innerHTML = `<p class="muted">Tu carrito está vacío.</p>`;
+  } else {
+    carritoItemsEl.innerHTML = "";
+
+    carrito.forEach(item => {
+      const subtotal = (Number(item.precioUnitario) || 0) * (Number(item.cantidad) || 0);
+
+      const row = document.createElement("div");
+      row.className = "item";
+      row.innerHTML = `
+        <div>
+          <strong>${item.nombre}</strong><br>
+          <span class="muted">$${(Number(item.precioUnitario) || 0).toFixed(2)} c/u</span>
+        </div>
+
+        <div class="qtyBtns">
+          <button type="button" aria-label="menos">-</button>
+          <span class="pill">${item.cantidad}</span>
+          <button type="button" aria-label="más">+</button>
+        </div>
+
+        <div><strong>$${subtotal.toFixed(2)}</strong></div>
+        <div><button type="button" aria-label="quitar">Quitar</button></div>
+      `;
+
+      const btnMenos = row.querySelector('button[aria-label="menos"]');
+      const btnMas = row.querySelector('button[aria-label="más"]');
+      const btnQuitar = row.querySelector('button[aria-label="quitar"]');
+
+      btnMenos.addEventListener("click", () => cambiarCantidad(item.productoId, -1));
+      btnMas.addEventListener("click", () => cambiarCantidad(item.productoId, +1));
+      btnQuitar.addEventListener("click", () => {
+        carrito = carrito.filter(i => i.productoId !== item.productoId);
+        renderCarrito();
+      });
+
+      carritoItemsEl.appendChild(row);
+    });
+  }
+
+  // Total
+  const total = (carrito || []).reduce((acc, item) => {
+    return acc + (Number(item.precioUnitario) || 0) * (Number(item.cantidad) || 0);
+  }, 0);
+  totalEl.textContent = total.toFixed(2);
+
+  // Contador de piezas
+  const contador = (carrito || []).reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
+  contadorEl.textContent = contador;
+
+  // Guardar estado
+  guardarEstado();
+}
+
+// Vaciar carrito con confirmación (si quieres que sea igual que antes)
+btnVaciar?.addEventListener("click", () => {
+  const ok = confirm("¿Seguro que quieres vaciar el carrito? Esta acción no se puede deshacer.");
+  if (!ok) return;
+
+  carrito = [];
+  renderCarrito(); // también guarda estado
+});
 
     // Elementos
     const listaProductosEl = document.getElementById("lista-productos");
