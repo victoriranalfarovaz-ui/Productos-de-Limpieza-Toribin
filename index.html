@@ -914,7 +914,6 @@ window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
       ? "No hay pedidos archivados."
       : "Aún no hay pedidos.";
     listaPedidosEl.className = "muted";
-    guardarEstado();
     return;
   }
 
@@ -923,7 +922,7 @@ window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
     div.style.borderBottom = "1px solid rgba(255,255,255,.08)";
     div.style.padding = "12px 0";
 
-    const items = p.items.map(i => `${i.nombre} x${i.cantidad}`).join(", ");
+    const items = (p.items || []).map(i => `${i.nombre} x${i.cantidad}`).join(", ");
 
     div.innerHTML = `
       <div class="row">
@@ -932,18 +931,13 @@ window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
       </div>
 
       <div style="margin-top:6px;">
-        <div><strong>Cliente:</strong> ${p.comprador.nombre} (${p.comprador.telefono})</div>
-        <div><strong>Dirección:</strong> ${p.comprador.direccion}</div>
+        <div><strong>Cliente:</strong> ${p.comprador?.nombre || ""} (${p.comprador?.telefono || ""})</div>
+        <div><strong>Dirección:</strong> ${p.comprador?.direccion || ""}</div>
         <div><strong>Items:</strong> ${items}</div>
-        <div><strong>Total:</strong> $${p.total.toFixed(2)}</div>
+        <div><strong>Total:</strong> $${Number(p.total || 0).toFixed(2)}</div>
 
         <div class="muted" style="margin-top:6px;">
           <div><strong>Creado:</strong> ${formatearFecha(p.creadoEn)}</div>
-          ${
-            p.archivadoEn
-              ? `<div><strong>Archivado:</strong> ${formatearFecha(p.archivadoEn)} (${p.archivadoPor || "admin"})</div>`
-              : ""
-          }
         </div>
       </div>
 
@@ -971,37 +965,116 @@ window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
       }
     `;
 
-    // Cambiar estado (solo activos)
+    // 🔁 Cambiar estado
     const select = div.querySelector(`select[data-id="${p.id}"]`);
     if (select) {
       select.addEventListener("change", async (e) => {
-  const nuevoEstado = e.target.value;
+        const nuevoEstado = e.target.value;
+        try {
+          await actualizarEstadoEnSheets(p.id, nuevoEstado);
+          await cargarPedidosCentral();
+        } catch (err) {
+          console.error(err);
+          alert("No se pudo actualizar el estado.");
+          e.target.value = p.estado;
+        }
+      });
+    }
 
-  try {
-    await actualizarEstadoEnSheets(p.id, nuevoEstado);
-    await cargarPedidosCentral(); // refresca desde Sheets
-  } catch (err) {
-    console.error(err);
-    alert("No se pudo actualizar el estado en el sistema central.");
-    // revertir visualmente
-    e.target.value = p.estado;
-  }
-});
-
+    // 🗄️ Archivar
     const btnArch = div.querySelector(`[data-archive="${p.id}"]`);
+    if (btnArch) {
+      btnArch.addEventListener("click", async () => {
+        if (!confirm("¿Archivar este pedido?")) return;
+        try {
+          await actualizarEstadoEnSheets(p.id, "archivado");
+          await cargarPedidosCentral();
+        } catch (err) {
+          console.error(err);
+          alert("No se pudo archivar.");
+        }
+      });
+    }
+
+    // ♻️ Restaurar
+    const btnRes = div.querySelector(`[data-restore="${p.id}"]`);
+    if (btnRes) {
+      btnRes.addEventListener("click", async () => {
+        if (!confirm("¿Restaurar este pedido?")) return;
+        try {
+          await actualizarEstadoEnSheets(p.id, "pendiente");
+          await cargarPedidosCentral();
+        } catch (err) {
+          console.error(err);
+          alert("No se pudo restaurar.");
+        }
+      });
+    }
+
+    listaPedidosEl.appendChild(div);
+  });
+}
+
+        </div>
+      </div>
+
+      ${
+        viendoHistorial
+          ? `
+            <div class="row" style="margin-top:10px; justify-content:flex-end;">
+              <button class="btn-primary" data-restore="${p.id}">Restaurar</button>
+            </div>
+          `
+          : `
+            <div style="margin-top:10px;" class="row">
+              <label class="muted">Cambiar estado:</label>
+              <select data-id="${p.id}">
+                <option value="pendiente" ${p.estado === "pendiente" ? "selected" : ""}>pendiente</option>
+                <option value="en_camino" ${p.estado === "en_camino" ? "selected" : ""}>en_camino</option>
+                <option value="entregado" ${p.estado === "entregado" ? "selected" : ""}>entregado</option>
+              </select>
+            </div>
+
+            <div class="row" style="margin-top:10px; justify-content:flex-end;">
+              <button class="btn-danger" data-archive="${p.id}">Archivar</button>
+            </div>
+          `
+      };
+
+    // Cambiar estado (solo activos)
+const select = div.querySelector(`select[data-id="${p.id}"]`);
+if (select) {
+  select.addEventListener("change", async (e) => {
+    const nuevoEstado = e.target.value;
+
+    try {
+      await actualizarEstadoEnSheets(p.id, nuevoEstado);
+      await cargarPedidosCentral(); // refresca desde Sheets
+    } catch (err) {
+      console.error(err);
+      alert("No se pudo actualizar el estado en el sistema central.");
+      // revertir visualmente (p.estado es el que venía del server)
+      e.target.value = p.estado;
+    }
+  });
+}
+
+// Archivar (solo activos)
+const btnArch = div.querySelector(`[data-archive="${p.id}"]`);
 if (btnArch) {
   btnArch.addEventListener("click", async () => {
     if (!confirm("¿Archivar este pedido?")) return;
 
     try {
       await actualizarEstadoEnSheets(p.id, "archivado");
-      await cargarPedidosCentral(); // vuelve a traer la lista desde Sheets
+      await cargarPedidosCentral();
     } catch (err) {
       console.error(err);
       alert("No se pudo archivar en el sistema central.");
     }
   });
 }
+
     // Restaurar (solo historial)
     const btnRes = div.querySelector(`[data-restore="${p.id}"]`);
     if (btnRes) {
