@@ -444,33 +444,7 @@ async function cargarPedidosCentral() {
 function guardarEstado() {
   const data = { carrito, pedidos, folio };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
-    async function guardarPedidoEnSheets(pedido) {
-  try {
-    const res = await fetch("/api/pedido", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(pedido)
-    });
-
-    const data = await res.json();
-    console.log("Respuesta API:", data);
-
-    if (!data.ok) {
-      throw new Error(data.error || "No se pudo guardar en Sheets");
-    }
-
-  } catch (err) {
-    console.error("Error:", err);
-    alert("Error enviando pedido al sistema central");
-    throw err;
-  }
-}
-
-    
+}   
 
 function cargarEstado() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -637,30 +611,6 @@ listaProductosEl.addEventListener("click", (e) => {
     btnSalirAdmin.addEventListener("click", () => {
   mostrarCliente();
 });
-async function cargarPedidosCentral() {
-  const res = await fetch("/api/pedidos");
-  const data = await res.json();
-
-  if (!data.ok) throw new Error(data.error || "No se pudieron cargar pedidos");
-
-  pedidos = (data.pedidos || []).map(row => ({
-    id: row.pedido_id || "",
-    estado: row.estado || "pendiente",
-    creadoEn: row.fecha || "",
-    total: Number(row.total || 0),
-    comprador: {
-      nombre: row.cliente || "",
-      telefono: row.telefono || "",
-      direccion: row.direccion || ""
-    },
-    items: String(row.items || "")
-      .split(" | ")
-      .filter(Boolean)
-      .map(txt => ({ nombre: txt, cantidad: 1, precioUnitario: 0 }))
-  }));
-
-  renderPedidos();
-}
     
 setInterval(() => {
   if (vistaAdminEl.style.display === "block") {
@@ -891,8 +841,9 @@ btnConfirmar.addEventListener("click", async (e) => {
     // guarda local
     pedidos.unshift(pedido);
     guardarEstado();
-
-    await cargarPedidosCentral();
+    
+    await guardarPedidoEnSheets(pedido);   // ✅ manda a Sheets (sistema central)
+    await cargarPedidosCentral();          // ✅ recarga lista desde el sistema central
 
 // WhatsApp
 const texto = encodeURIComponent(armarMensajeWhatsApp(pedido));
