@@ -428,28 +428,6 @@ function guardarEstado() {
   }
 }
 
-    async function cargarPedidosCentral() {
-  const res = await fetch("/api/pedidos");
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || "No se pudieron cargar pedidos");
-
-  // Convertimos lo que viene del sheet a tu formato simple para mostrar
-  pedidos = (data.pedidos || []).map(p => ({
-    id: p.pedido_id,
-    estado: p.estado || "pendiente",
-    creadoEn: p.fecha,
-    total: Number(p.total || 0),
-    comprador: {
-      nombre: p.cliente || "",
-      telefono: p.telefono || "",
-      direccion: p.direccion || ""
-    },
-    items: (p.items || "").split(" | ").filter(Boolean).map(txt => ({ nombre: txt, cantidad: 1, precioUnitario: 0 }))
-  }));
-
-  renderPedidos();
-}
-
 function cargarEstado() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return;
@@ -619,6 +597,12 @@ listaProductosEl.addEventListener("click", (e) => {
     btnSalirAdmin.addEventListener("click", () => {
   mostrarCliente();
 });
+    
+setInterval(() => {
+  if (vistaAdminEl.style.display === "block") {
+    cargarPedidosCentral().catch(() => {});
+  }
+}, 15000); // cada 15s
 
 
   function mostrarCliente() {
@@ -633,19 +617,24 @@ listaProductosEl.addEventListener("click", (e) => {
 }
 
 btnVistaCliente.addEventListener("click", mostrarCliente);
-btnVistaAdmin.addEventListener("click", () => {
-  // Si ya estás en admin, no vuelvas a pedir PIN
+btnVistaAdmin.addEventListener("click", async () => {
   if (vistaAdminEl.style.display === "block") return;
+
   const intento = prompt("Ingresa el PIN de admin:");
   if (intento !== ADMIN_PIN) {
     alert("PIN incorrecto.");
     return;
   }
+
   mostrarAdmin();
-  renderPedidos();
+
+  try {
+    await cargarPedidosCentral();
+  } catch (e) {
+    console.error(e);
+    alert("No pude cargar pedidos del sistema central.");
+  }
 });
-
-
 
   function renderProductos() {
   const q = (buscadorEl.value || "").trim().toLowerCase();
@@ -841,6 +830,34 @@ btnConfirmar.addEventListener("click", async (e) => {
 
    // guarda central
     await guardarPedidoEnSheets(pedido);
+
+    async function cargarPedidosCentral() {
+  const res = await fetch("/api/pedidos");
+  const data = await res.json();
+
+  if (!data.ok) throw new Error(data.error || "No se pudieron cargar pedidos");
+
+  // Convertimos filas del Sheet a tu formato de admin
+  pedidos = (data.pedidos || []).map(row => ({
+    id: row.pedido_id || "",
+    estado: row.estado || "pendiente",
+    creadoEn: row.fecha || "",
+    total: Number(row.total || 0),
+    comprador: {
+      nombre: row.cliente || "",
+      telefono: row.telefono || "",
+      direccion: row.direccion || ""
+    },
+    // Para mostrar items en admin, los convertimos a algo simple
+    items: String(row.items || "")
+      .split(" | ")
+      .filter(Boolean)
+      .map(txt => ({ nombre: txt, cantidad: 1, precioUnitario: 0 }))
+  }));
+
+  renderPedidos();
+}
+
 
     await cargarPedidosCentral();
 
