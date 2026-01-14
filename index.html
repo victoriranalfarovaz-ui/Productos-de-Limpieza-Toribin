@@ -773,7 +773,11 @@ btnVistaAdmin.addEventListener("click", () => {
       checkoutFormEl.style.display = "none";
     });
 
-    btnConfirmar.addEventListener("click", async () => {
+    let enviandoPedido = false;
+
+btnConfirmar.addEventListener("click", async () => {
+  if (enviandoPedido) return; // evita doble clic
+
   const nombre = nombreEl.value.trim();
   const telefono = telefonoEl.value.trim();
   const direccion = direccionEl.value.trim();
@@ -782,6 +786,61 @@ btnVistaAdmin.addEventListener("click", () => {
     alert("Por favor llena nombre, teléfono y dirección.");
     return;
   }
+
+  if (carrito.length === 0) {
+    alert("Tu carrito está vacío.");
+    return;
+  }
+
+  // Bloquear botón
+  enviandoPedido = true;
+  const textoOriginal = btnConfirmar.textContent;
+  btnConfirmar.disabled = true;
+  btnConfirmar.textContent = "Enviando...";
+
+  try {
+    const total = carrito.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
+
+    const pedido = {
+      id: `PED-${String(folio).padStart(4, "0")}`,
+      items: carrito.map(i => ({ ...i })),
+      total,
+      comprador: { nombre, telefono, direccion },
+      estado: "pendiente",
+      creadoEn: new Date().toISOString()
+    };
+
+    folio += 1;
+    pedidos.unshift(pedido);
+    guardarEstado();
+
+    // Guardar en sistema central
+    await guardarPedidoEnSheets(pedido);
+
+    // WhatsApp
+    const texto = encodeURIComponent(armarMensajeWhatsApp(pedido));
+    window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
+
+    // limpiar
+    vaciarCarrito();
+    nombreEl.value = "";
+    telefonoEl.value = "";
+    direccionEl.value = "";
+    checkoutFormEl.style.display = "none";
+
+    renderPedidos();
+    alert(`Pedido creado: ${pedido.id}`);
+
+  } catch (err) {
+    console.error(err);
+    alert("No se pudo enviar el pedido. Intenta de nuevo.");
+  } finally {
+    // Desbloquear botón
+    enviandoPedido = false;
+    btnConfirmar.disabled = false;
+    btnConfirmar.textContent = textoOriginal;
+  }
+});
 
   const total = carrito.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
 
