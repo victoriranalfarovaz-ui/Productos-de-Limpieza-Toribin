@@ -344,6 +344,8 @@
 
     const WHATSAPP_NEGOCIO = "525660578484"; 
 // Formato: 52 + tu número (sin +, sin espacios). Ej: México 52 + 55xxxxxxx
+    
+    const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbygdJ21gkt3LJX4_dKFwHbkYBRSEqt70ivZ1LVYIM3gXgZmPpsuAK4qVNGMGxw_Q5-S/exec";
 
     // Productos (puedes cambiarlos)
     const productos = [
@@ -402,6 +404,20 @@ function guardarEstado() {
   const data = { carrito, pedidos, folio };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
+
+    async function guardarPedidoEnSheets(pedido) {
+  try {
+    await fetch(SHEETS_WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pedido)
+    });
+    console.log("Pedido enviado a Google Sheets");
+  } catch (err) {
+    console.log("Error enviando a Sheets:", err);
+  }
+}
+
 
 function cargarEstado() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -776,6 +792,7 @@ console.log("LocalStorage:", JSON.parse(localStorage.getItem(STORAGE_KEY)));
       folio += 1;
       pedidos.unshift(pedido);
       guardarEstado();
+      guardarPedidoEnSheets(pedido);
 
       const texto = encodeURIComponent(armarMensajeWhatsApp(pedido)); 
       window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
