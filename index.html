@@ -345,7 +345,7 @@
     const WHATSAPP_NEGOCIO = "525660578484"; 
 // Formato: 52 + tu número (sin +, sin espacios). Ej: México 52 + 55xxxxxxx
     
-    const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbygdJ21gkt3LJX4_dKFwHbkYBRSEqt70ivZ1LVYIM3gXgZmPpsuAK4qVNGMGxw_Q5-S/exec";
+   const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxY61sFgOQ6udjXE58B1_DfJFG5GDmxDCnep5o8MqIDQyiqCMZVeZtv-60ItWg8Lq2Y/exec";
 
     // Productos (puedes cambiarlos)
     const productos = [
@@ -407,15 +407,20 @@ function guardarEstado() {
 
     async function guardarPedidoEnSheets(pedido) {
   try {
-    await fetch(SHEETS_WEBAPP_URL, {
+    const res = await fetch(SHEETS_WEBAPP_URL, {
       method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify(pedido)
     });
-    console.log("Pedido enviado a Sheets (no-cors)");
+
+    const txt = await res.text();
+    console.log("Respuesta de Sheets:", txt);
+
   } catch (err) {
-    console.log("Error enviando a Sheets:", err);
+    console.error("Error enviando a Sheets:", err);
+    alert("Error enviando pedido al sistema central");
   }
 }
 
