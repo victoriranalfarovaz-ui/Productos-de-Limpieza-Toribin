@@ -347,11 +347,16 @@
 
    const WHATSAPP_NEGOCIO = "525660578484";
 
+  let carrito = [];
+  let pedidos = [];
+  let folio = 1;
+
+
 async function guardarPedidoEnSheets(pedido) {
   try {
     const res = await fetch(SHEETS_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ accion: "guardarPedido", pedido })
     });
 
@@ -452,11 +457,17 @@ function cargarEstado() {
 
   try {
     const data = JSON.parse(raw);
+
     carrito = Array.isArray(data.carrito) ? data.carrito : [];
-    pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
+
+    pedidos = (Array.isArray(data.pedidos) ? data.pedidos : []).map(p => ({
+      ...p,
+      comprador: p?.comprador || { nombre: "", telefono: "", direccion: "" },
+      items: Array.isArray(p?.items) ? p.items : []
+    }));
+
     folio = Number.isFinite(data.folio) ? data.folio : 1;
   } catch (e) {
-    // si algo se corrompe, lo ignoramos para que la app no se rompa
     carrito = [];
     pedidos = [];
     folio = 1;
