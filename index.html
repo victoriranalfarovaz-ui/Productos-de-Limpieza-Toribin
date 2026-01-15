@@ -339,7 +339,7 @@
     </div>
 </section>
 <script>
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbyG9OTdjETDKGncUJr8qX6vbW51pZc88RLCc6uZcgjTAf8r7qqUlrt9fVR1MQj4nDTI/exec";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbx5WbzT8zzPCPCcUTf11toxDyRRLyUx5Gq3ht4LO8c8cIa8T4U4YbQzykPzFEJNeLHb/exec";
 
   const WHATSAPP_NEGOCIO = "525660578484";
 
@@ -355,24 +355,28 @@ const SHEETS_URL = "https://script.google.com/macros/s/AKfycbyG9OTdjETDKGncUJr8q
 
  async function guardarPedidoEnSheets(pedido) {
   const payload = {
+    accion: "guardarPedido",
     id: pedido.id,
-    creadoEn: pedido.creadoEn,
-    estado: pedido.estado,
+    cliente: pedido.comprador.nombre,
+    telefono: pedido.comprador.telefono,
+    direccion: pedido.comprador.direccion,
+    items: pedido.items,
     total: pedido.total,
-
-    // 👇 Lo que tu Apps Script espera:
-    cliente: pedido.comprador?.nombre || "",
-    telefono: pedido.comprador?.telefono || "",
-    direccion: pedido.comprador?.direccion || "",
-
-    // 👇 Items con los nombres que espera el Apps Script:
-    items: (pedido.items || []).map(i => ({
-      nombre: i.nombre,
-      cantidad: i.cantidad,
-      precioUnitario: i.precioUnitario
-    }))
+    estado: pedido.estado,
+    creadoEn: pedido.creadoEn
   };
 
+  console.log("PAYLOAD A SHEETS:", payload); // 👈 AQUÍ
+
+  const res = await fetch(SHEETS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
+}
   const res = await fetch(SHEETS_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" }, // 👈 deja text/plain para evitar preflight
