@@ -353,22 +353,35 @@ const SHEETS_URL = "https://script.google.com/macros/s/AKfycbyG9OTdjETDKGncUJr8q
   // UI estado
   let viendoHistorial = false;
 
-  async function guardarPedidoEnSheets(pedido) {
-    try {
-      const res = await fetch(SHEETS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ accion: "guardarPedido", pedido }),
-      });
+ async function guardarPedidoEnSheets(pedido) {
+  const payload = {
+    id: pedido.id,
+    creadoEn: pedido.creadoEn,
+    estado: pedido.estado,
+    total: pedido.total,
 
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
-    } catch (err) {
-      console.error("Error:", err);
-      alert("Error enviando pedido al sistema central");
-      throw err;
-    }
-  }
+    // 👇 Lo que tu Apps Script espera:
+    cliente: pedido.comprador?.nombre || "",
+    telefono: pedido.comprador?.telefono || "",
+    direccion: pedido.comprador?.direccion || "",
+
+    // 👇 Items con los nombres que espera el Apps Script:
+    items: (pedido.items || []).map(i => ({
+      nombre: i.nombre,
+      cantidad: i.cantidad,
+      precioUnitario: i.precioUnitario
+    }))
+  };
+
+  const res = await fetch(SHEETS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" }, // 👈 deja text/plain para evitar preflight
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
+}
 
   async function cargarPedidosCentral() {
     const res = await fetch(`${SHEETS_URL}?accion=obtenerPedidos`);
