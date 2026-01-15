@@ -353,26 +353,30 @@ const SHEETS_URL = "https://script.google.com/macros/s/AKfycbx5WbzT8zzPCPCcUTf11
   // UI estado
   let viendoHistorial = false;
 
- async function guardarPedidoEnSheets(pedido) {
+  async function guardarPedidoEnSheets(pedido) {
   const payload = {
     accion: "guardarPedido",
     id: pedido.id,
-    cliente: pedido.comprador.nombre,
-    telefono: pedido.comprador.telefono,
-    direccion: pedido.comprador.direccion,
-    items: pedido.items,
-    total: pedido.total,
-    estado: pedido.estado,
-    creadoEn: pedido.creadoEn
+    cliente: pedido.comprador?.nombre || "",
+    telefono: pedido.comprador?.telefono || "",
+    direccion: pedido.comprador?.direccion || "",
+    items: pedido.items || [],
+    total: pedido.total || 0,
+    estado: pedido.estado || "pendiente",
+    creadoEn: pedido.creadoEn || new Date().toISOString()
   };
 
-  console.log("PAYLOAD A SHEETS:", payload); // 👈 AQUÍ
+  console.log("PAYLOAD A SHEETS:", payload);
 
   const res = await fetch(SHEETS_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(payload)
   });
+
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
+}
 
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
