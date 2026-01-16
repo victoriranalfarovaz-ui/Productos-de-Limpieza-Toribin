@@ -355,8 +355,9 @@ async function guardarPedidoEnSheets(pedido) {
     cliente: pedido.comprador?.nombre || "",
     telefono: pedido.comprador?.telefono || "",
     direccion: pedido.comprador?.direccion || "",
+    // 👇 lo mandamos como TEXTO para que Apps Script lo guarde bien
     items: (pedido.items || []).map(i => `${i.nombre} x${i.cantidad}`).join(" | "),
-    total: pedido.total || 0,
+    total: Number(pedido.total || 0),
     estado: pedido.estado || "pendiente",
     creadoEn: pedido.creadoEn || new Date().toISOString()
   };
@@ -373,19 +374,18 @@ async function guardarPedidoEnSheets(pedido) {
   const txt = await res.text();
   console.log("RESPUESTA SHEETS (raw):", txt);
 
-  // intenta parsear JSON si viene JSON
+  // Intentar parsear JSON si viene JSON
   let data = null;
-  try { data = JSON.parse(txt); } catch {}
+  try { data = JSON.parse(txt); } catch (e) {}
 
-  // Si NO vino JSON pero la petición sí llegó, lo consideramos OK
-  // (Apps Script a veces devuelve texto simple)
+  // Si Apps Script sí manda ok:false, lo respetamos
   if (data && data.ok === false) {
     throw new Error(data.error || "Sheets respondió ok:false");
   }
 
+  // Si no vino JSON (vino texto por echo), lo tomamos como OK
   return true;
 }
-
   async function cargarPedidosCentral() {
     const res = await fetch(`${SHEETS_URL}?accion=obtenerPedidos`);
     const data = await res.json();
