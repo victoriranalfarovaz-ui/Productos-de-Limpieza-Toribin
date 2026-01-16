@@ -339,7 +339,7 @@
     </div>
 </section>
 <script>
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbx5WbzT8zzPCPCcUTf11toxDyRRLyUx5Gq3ht4LO8c8cIa8T4U4YbQzykPzFEJNeLHb/exec";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbykw_BqVmE0Q3tNXmfzvSqrdQUmILjjgXIFK58_awnbCF9R1vS06Meo0VlfyqC0lgKu/exec";
 
 const WHATSAPP_NEGOCIO = "525660578484";
 
@@ -347,43 +347,29 @@ let carrito = [];
 let pedidos = [];
 let folio = 1;
 let viendoHistorial = false;
-
 async function guardarPedidoEnSheets(pedido) {
   const payload = {
     accion: "guardarPedido",
     id: pedido.id,
-    cliente: pedido.comprador?.nombre || "",
-    telefono: pedido.comprador?.telefono || "",
-    direccion: pedido.comprador?.direccion || "",
-    items: (pedido.items || []).map(i => `${i.nombre} x${i.cantidad}`).join(" | "),
-    total: Number(pedido.total || 0),
-    estado: pedido.estado || "pendiente",
-    creadoEn: pedido.creadoEn || new Date().toISOString()
+    cliente: pedido.comprador.nombre,
+    telefono: pedido.comprador.telefono,
+    direccion: pedido.comprador.direccion,
+    items: pedido.items,              // ✅ array de objetos
+    total: pedido.total,
+    estado: pedido.estado,
+    creadoEn: pedido.creadoEn
   };
-
-  console.log("PAYLOAD A SHEETS:", payload);
 
   const res = await fetch(SHEETS_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload),
-    redirect: "follow"
+    body: JSON.stringify(payload)
   });
 
-  const txt = await res.text();
-  console.log("RESPUESTA SHEETS (raw):", txt);
-
-  // Si viene JSON, lo interpretamos. Si no, no tronamos.
-  let data = null;
-  try { data = JSON.parse(txt); } catch (e) {}
-
-  if (data && data.ok === false) {
-    throw new Error(data.error || "Sheets respondió ok:false");
-  }
-
-  return true;
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
 }
-
+  
   async function cargarPedidosCentral() {
   const res = await fetch(`${SHEETS_URL}?accion=obtenerPedidos`, { redirect: "follow" });
 
