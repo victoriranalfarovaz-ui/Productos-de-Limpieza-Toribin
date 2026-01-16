@@ -341,25 +341,21 @@
 <script>
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbx5WbzT8zzPCPCcUTf11toxDyRRLyUx5Gq3ht4LO8c8cIa8T4U4YbQzykPzFEJNeLHb/exec";
 
-  const WHATSAPP_NEGOCIO = "525660578484";
+const WHATSAPP_NEGOCIO = "525660578484";
 
-  // Carrito
-  let carrito = [];
+let carrito = [];
+let pedidos = [];
+let folio = 1;
+let viendoHistorial = false;
 
-  // Pedidos
-  let pedidos = [];
-  let folio = 1;
-
-  // UI estado
-  let viendoHistorial = false;
-
- async function guardarPedidoEnSheets(pedido) {
+async function guardarPedidoEnSheets(pedido) {
   const payload = {
     accion: "guardarPedido",
     id: pedido.id,
     cliente: pedido.comprador?.nombre || "",
     telefono: pedido.comprador?.telefono || "",
     direccion: pedido.comprador?.direccion || "",
+    // 👇 manda items como texto (Apps Script lo maneja fácil)
     items: (pedido.items || []).map(i => `${i.nombre} x${i.cantidad}`).join(" | "),
     total: pedido.total || 0,
     estado: pedido.estado || "pendiente",
@@ -374,9 +370,19 @@ const SHEETS_URL = "https://script.google.com/macros/s/AKfycbx5WbzT8zzPCPCcUTf11
     body: JSON.stringify(payload)
   });
 
-  const data = await res.json();
+  const txt = await res.text();
+  console.log("RESPUESTA SHEETS (raw):", txt);
+
+  let data;
+  try {
+    data = JSON.parse(txt);
+  } catch (e) {
+    throw new Error("Sheets no devolvió JSON. Respuesta: " + txt.slice(0, 200));
+  }
+
   if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
 }
+
 
   async function cargarPedidosCentral() {
     const res = await fetch(`${SHEETS_URL}?accion=obtenerPedidos`);
