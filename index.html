@@ -347,19 +347,17 @@ let carrito = [];
 let pedidos = [];
 let folio = 1;
 let viendoHistorial = false;
-async function guardarPedidoEnSheets(pedido) {
-  const payload = {
-    accion: "guardarPedido",
-    id: pedido.id,
-    cliente: pedido.comprador.nombre,
-    telefono: pedido.comprador.telefono,
-    direccion: pedido.comprador.direccion,
-    items: pedido.items,              // ✅ array de objetos
-    total: pedido.total,
-    estado: pedido.estado,
-    creadoEn: pedido.creadoEn
-  };
-
+const payload = {
+  accion: "guardarPedido",
+  id: pedido.id,
+  cliente: pedido.comprador?.nombre || "",
+  telefono: pedido.comprador?.telefono || "",
+  direccion: pedido.comprador?.direccion || "",
+  items: pedido.items || [],
+  total: Number(pedido.total || 0),
+  estado: pedido.estado || "pendiente",
+  creadoEn: pedido.creadoEn || new Date().toISOString(),
+};
   const res = await fetch(SHEETS_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
