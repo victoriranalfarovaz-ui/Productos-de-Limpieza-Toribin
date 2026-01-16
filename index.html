@@ -322,729 +322,82 @@
   </section>
 </section> <!-- fin vistaCliente -->
 <script>
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbwuMxVw9sAKYAanyWmuzVk7GhmHKtvUgW4UJlUhrSge-L1OwNu-yYNX9Z50VjEE5jI9/exec";
-
 const WHATSAPP_NEGOCIO = "525642341448";
 
 let carrito = [];
-let pedidos = [];
 let folio = 1;
-let viendoHistorial = false;
 
-async function guardarPedidoEnSheets(pedido) {
-  const payload = {
-    accion: "guardarPedido",
-    id: pedido.id,
-    cliente: pedido.comprador?.nombre || "",
-    telefono: pedido.comprador?.telefono || "",
-    direccion: pedido.comprador?.direccion || "",
-    items: Array.isArray(pedido.items) ? pedido.items : [],
-    total: Number(pedido.total || 0),
-    estado: pedido.estado || "pendiente",
-    creadoEn: pedido.creadoEn || new Date().toISOString(),
-  };
+// ================== PRODUCTOS ==================
+const productos = [
+  { id: 1, nombre: "Clarasol Multiusos", precio: 8, desc: "Clarasol multiusos 1lt", img: "img/clarasol.jpg" },
+  { id: 2, nombre: "Detergente Ropa Color", precio: 18, desc: "Detergente ropa color", img: "img/detergente-color.jpg" },
+  { id: 3, nombre: "Detergente Ropa Blanca", precio: 18, desc: "Detergente ropa blanca", img: "img/detergente-blanco.jpg" },
+  { id: 4, nombre: "Enjuague Ropa Color", precio: 18, desc: "Enjuague ropa color", img: "img/enjuague.jpg" },
+];
 
-  console.log("PAYLOAD A SHEETS:", payload);
+// ================== CARRITO ==================
+function renderProductos() {
+  const lista = document.getElementById("lista-productos");
+  lista.innerHTML = "";
 
-  const res = await fetch(SHEETS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload),
-    redirect: "follow",
+  productos.forEach(p => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <img class="product-img" src="${p.img}">
+      <h3>${p.nombre}</h3>
+      <p>${p.desc}</p>
+      <strong>$${p.precio.toFixed(2)}</strong><br>
+      <button onclick="agregar(${p.id})">Agregar</button>
+    `;
+    lista.appendChild(div);
   });
-
-  const txt = await res.text();
-  console.log("RESPUESTA SHEETS (raw):", txt);
-
-  let data;
-  try { data = JSON.parse(txt); }
-  catch (e) { throw new Error("Sheets no devolvió JSON"); }
-
-  if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
 }
 
-async function cargarPedidosCentral() {
-  const res = await fetch(`${SHEETS_URL}?accion=obtenerPedidos`, { redirect: "follow" });
+function agregar(id) {
+  const p = productos.find(x => x.id === id);
+  const existe = carrito.find(i => i.id === id);
 
-  const txt = await res.text();
-  console.log("GET PEDIDOS (raw):", txt);
+  if (existe) existe.cantidad++;
+  else carrito.push({ ...p, cantidad: 1 });
 
-  let data;
-  try { data = JSON.parse(txt); }
-  catch (e) { throw new Error("La respuesta de obtenerPedidos NO es JSON"); }
-
-  if (!data.ok) throw new Error(data.error || "No se pudieron cargar pedidos");
-
-  pedidos = (data.pedidos || []).map((row) => ({
-    id: row.pedido_id || "",
-    estado: row.estado || "pendiente",
-    creadoEn: row.fecha || "",
-    total: Number(row.total || 0),
-    comprador: {
-      nombre: row.cliente || "",
-      telefono: row.telefono || "",
-      direccion: row.direccion || "",
-    },
-    // si en sheets guardas items como "A x2 | B x1", aquí lo convertimos a array
-    items: String(row.items || "")
-      .split(" | ")
-      .filter(Boolean)
-      .map((txt) => ({ nombre: txt, cantidad: 1, precioUnitario: 0 })),
-  }));
-
-  renderPedidos();
-}
-
-
-  async function actualizarEstadoEnSheets(pedidoId, estado) {
-  const res = await fetch(SHEETS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ accion: "actualizarEstado", pedidoId, estado }),
-    redirect: "follow",
-  });
-
-  const txt = await res.text();
-  console.log("UPDATE ESTADO (raw):", txt);
-
-  let data;
-  try { data = JSON.parse(txt); }
-  catch (e) { throw new Error("La respuesta de actualizarEstado NO es JSON"); }
-
-  if (!data.ok) throw new Error(data.error || "No se pudo actualizar estado");
-}
-
-  // Productos
-  const productos = [
-    {
-      id: 1,
-      nombre: "Clarasol Multiusos",
-      precio: 8.0,
-      desc: "Clarasol multiusos 1lt",
-      img: "img/clarasol.jpg",
-      icon: "🧴",
-      categoria: "limpieza",
-    },
-    {
-      id: 2,
-      nombre: "Detergente Ropa Color",
-      precio: 18.0,
-      desc: "Detergente para ropa de color 1lt",
-      img: "img/detergente-color.jpg",
-      icon: "👕",
-      categoria: "ropa",
-    },
-    {
-      id: 3,
-      nombre: "Detergente Ropa Blanca",
-      precio: 18.0,
-      desc: "Detergente para ropa blanca 1lt",
-      img: "img/detergente-blanco.jpg",
-      icon: "🫧",
-      categoria: "ropa",
-    },
-    {
-      id: 4,
-      nombre: "Enjuague Ropa Color",
-      precio: 18.0,
-      desc: "Enjuague para ropa de color",
-      img: "img/enjuague.jpg",
-      icon: "🌸",
-      categoria: "suavizante",
-    },
-  ];
-
-  const STORAGE_KEY = "mi_tienda_v1";
-  const ADMIN_PIN = "1234"; // cámbialo
-
-  function guardarEstado() {
-    const data = { carrito, pedidos, folio };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
-
-  function cargarEstado() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-
-    try {
-      const data = JSON.parse(raw);
-
-      carrito = Array.isArray(data.carrito) ? data.carrito : [];
-      pedidos = (Array.isArray(data.pedidos) ? data.pedidos : []).map((p) => ({
-        ...p,
-        comprador: p?.comprador || { nombre: "", telefono: "", direccion: "" },
-        items: Array.isArray(p?.items) ? p.items : [],
-      }));
-      folio = Number.isFinite(data.folio) ? data.folio : 1;
-    } catch (e) {
-      carrito = [];
-      pedidos = [];
-      folio = 1;
-    }
-  }
-
-  function formatearFecha(iso) {
-    if (!iso) return "";
-    const d = new Date(iso);
-    return d.toLocaleString("es-MX", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  // Elementos
-  const listaProductosEl = document.getElementById("lista-productos");
-  const carritoItemsEl = document.getElementById("carrito-items");
-  const totalEl = document.getElementById("total");
-  const contadorEl = document.getElementById("contador");
-  const btnVaciar = document.getElementById("vaciar");
-  const btnCheckout = document.getElementById("checkout");
-
-  const checkoutFormEl = document.getElementById("checkout-form");
-  const nombreEl = document.getElementById("nombre");
-  const telefonoEl = document.getElementById("telefono");
-  const direccionEl = document.getElementById("direccion");
-  const btnConfirmar = document.getElementById("confirmar");
-  const btnCancelar = document.getElementById("cancelar");
-  const listaPedidosEl = document.getElementById("lista-pedidos");
-
-  const vistaClienteEl = document.getElementById("vistaCliente");
-  const btnVistaCliente = document.getElementById("btnVistaCliente");
-  const buscadorEl = document.getElementById("buscador");
-  const btnHistorial = document.getElementById("btnHistorial");
-  const btnExportar = document.getElementById("btnExportar");
-
-  // Carrito
-  function cambiarCantidad(productoId, delta) {
-    const item = carrito.find((i) => i.productoId === productoId);
-    if (!item) return;
-
-    item.cantidad += delta;
-
-    if (item.cantidad <= 0) {
-      carrito = carrito.filter((i) => i.productoId !== productoId);
-    }
-
-    renderCarrito();
-  }
-
-  function vaciarCarrito() {
-    carrito = [];
-    renderCarrito();
-  }
-
-  function renderCarrito() {
-    if (!Array.isArray(carrito) || carrito.length === 0) {
-      carritoItemsEl.innerHTML = `<p class="muted">Tu carrito está vacío.</p>`;
-    } else {
-      carritoItemsEl.innerHTML = "";
-
-      carrito.forEach((item) => {
-        const precio = Number(item.precioUnitario) || 0;
-        const cant = Number(item.cantidad) || 0;
-        const subtotal = precio * cant;
-
-        const row = document.createElement("div");
-        row.className = "item";
-        row.innerHTML = `
-          <div>
-            <strong>${item.nombre}</strong><br>
-            <span class="muted">$${precio.toFixed(2)} c/u</span>
-          </div>
-
-          <div class="qtyBtns">
-            <button type="button" aria-label="menos">-</button>
-            <span class="pill">${cant}</span>
-            <button type="button" aria-label="más">+</button>
-          </div>
-
-          <div><strong>$${subtotal.toFixed(2)}</strong></div>
-          <div><button type="button" aria-label="quitar">Quitar</button></div>
-        `;
-
-        row
-          .querySelector('button[aria-label="menos"]')
-          .addEventListener("click", () => cambiarCantidad(item.productoId, -1));
-
-        row
-          .querySelector('button[aria-label="más"]')
-          .addEventListener("click", () => cambiarCantidad(item.productoId, +1));
-
-        row
-          .querySelector('button[aria-label="quitar"]')
-          .addEventListener("click", () => {
-            carrito = carrito.filter((i) => i.productoId !== item.productoId);
-            renderCarrito();
-          });
-
-        carritoItemsEl.appendChild(row);
-      });
-    }
-
-    const total = (carrito || []).reduce((acc, item) => {
-      return acc + (Number(item.precioUnitario) || 0) * (Number(item.cantidad) || 0);
-    }, 0);
-
-    totalEl.textContent = total.toFixed(2);
-
-    const contador = (carrito || []).reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
-    contadorEl.textContent = contador;
-
-    guardarEstado();
-  }
-
-  // Productos
-  function renderProductos() {
-    const q = (buscadorEl.value || "").trim().toLowerCase();
-
-    const filtrados = productos.filter((p) => {
-      const texto = `${p.nombre} ${p.desc} ${p.categoria ?? ""}`.toLowerCase();
-      return texto.includes(q);
-    });
-
-    listaProductosEl.innerHTML = "";
-
-    if (filtrados.length === 0) {
-      listaProductosEl.innerHTML = `
-        <div class="card">
-          <strong>No se encontraron productos</strong>
-          <div class="muted" style="margin-top:6px;">Prueba con otra palabra.</div>
-        </div>
-      `;
-      return;
-    }
-
-    filtrados.forEach((p) => {
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `
-        <img class="product-img add-by-image" data-id="${p.id}" src="${p.img}" alt="${p.nombre}" />
-
-        <div class="row">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <span class="icon-badge">${p.icon ?? "🛍️"}</span>
-            <h3 style="margin: 0;">${p.nombre}</h3>
-          </div>
-          <div class="tag ${p.categoria ?? ""}">${p.categoria ?? "producto"}</div>
-        </div>
-
-        <div class="row" style="margin-top:6px;">
-          <span class="price">$${p.precio.toFixed(2)}</span>
-        </div>
-
-        <p class="muted" style="margin: 8px 0 12px;">${p.desc}</p>
-        <button data-id="${p.id}" class="btn-primary">Agregar al carrito</button>
-      `;
-
-      listaProductosEl.appendChild(card);
-    });
-  }
-
-  function agregarAlCarrito(productoId) {
-    const p = productos.find((x) => x.id === productoId);
-    if (!p) {
-      alert("No se encontró el producto (id inválido).");
-      console.log("Producto no encontrado:", productoId);
-      return;
-    }
-
-    const existente = carrito.find((i) => i.productoId === productoId);
-    if (existente) {
-      existente.cantidad += 1;
-    } else {
-      carrito.push({
-        productoId: p.id,
-        nombre: p.nombre,
-        precioUnitario: p.precio,
-        cantidad: 1,
-      });
-    }
-
-    renderCarrito();
-  }
-
-  // Pedidos (ADMIN) ✅ (limpio, sin duplicados)
-  function renderPedidos() {
-    listaPedidosEl.className = "";
-    listaPedidosEl.innerHTML = "";
-
-    const lista = viendoHistorial
-      ? pedidos.filter((p) => p.estado === "archivado")
-      : pedidos.filter((p) => p.estado !== "archivado");
-
-    if (lista.length === 0) {
-      listaPedidosEl.textContent = viendoHistorial ? "No hay pedidos archivados." : "Aún no hay pedidos.";
-      listaPedidosEl.className = "muted";
-      guardarEstado();
-      return;
-    }
-
-    lista.forEach((p) => {
-      const div = document.createElement("div");
-      div.style.borderBottom = "1px solid rgba(255,255,255,.08)";
-      div.style.padding = "12px 0";
-
-      const items = (p.items || []).map((i) => `${i.nombre} x${i.cantidad}`).join(", ");
-
-      div.innerHTML = `
-        <div class="row">
-          <strong>${p.id}</strong>
-          <span class="pill">Estado: ${p.estado}</span>
-        </div>
-
-        <div style="margin-top:6px;">
-          <div><strong>Cliente:</strong> ${p.comprador?.nombre || ""} (${p.comprador?.telefono || ""})</div>
-          <div><strong>Dirección:</strong> ${p.comprador?.direccion || ""}</div>
-          <div><strong>Items:</strong> ${items}</div>
-          <div><strong>Total:</strong> $${Number(p.total || 0).toFixed(2)}</div>
-
-          <div class="muted" style="margin-top:6px;">
-            <div><strong>Creado:</strong> ${formatearFecha(p.creadoEn)}</div>
-          </div>
-        </div>
-
-        ${
-          viendoHistorial
-            ? `
-              <div class="row" style="margin-top:10px; justify-content:flex-end;">
-                <button class="btn-primary" data-restore="${p.id}">Restaurar</button>
-              </div>
-            `
-            : `
-              <div style="margin-top:10px;" class="row">
-                <label class="muted">Cambiar estado:</label>
-                <select data-id="${p.id}">
-                  <option value="pendiente" ${p.estado === "pendiente" ? "selected" : ""}>pendiente</option>
-                  <option value="en_camino" ${p.estado === "en_camino" ? "selected" : ""}>en_camino</option>
-                  <option value="entregado" ${p.estado === "entregado" ? "selected" : ""}>entregado</option>
-                </select>
-              </div>
-
-              <div class="row" style="margin-top:10px; justify-content:flex-end;">
-                <button class="btn-danger" data-archive="${p.id}">Archivar</button>
-              </div>
-            `
-        }
-      `;
-
-      // 🔁 Cambiar estado (solo activos)
-      const select = div.querySelector(`select[data-id="${p.id}"]`);
-      if (select) {
-        select.addEventListener("change", async (e) => {
-          const nuevoEstado = e.target.value;
-          try {
-            await actualizarEstadoEnSheets(p.id, nuevoEstado);
-            await cargarPedidosCentral();
-          } catch (err) {
-            console.error(err);
-            alert("No se pudo actualizar el estado.");
-            e.target.value = p.estado; // revertir
-          }
-        });
-      }
-
-      // 🗄️ Archivar (solo activos)
-      const btnArch = div.querySelector(`[data-archive="${p.id}"]`);
-      if (btnArch) {
-        btnArch.addEventListener("click", async () => {
-          if (!confirm("¿Archivar este pedido?")) return;
-          try {
-            await actualizarEstadoEnSheets(p.id, "archivado");
-            await cargarPedidosCentral();
-          } catch (err) {
-            console.error(err);
-            alert("No se pudo archivar.");
-          }
-        });
-      }
-
-      // ♻️ Restaurar (solo historial)
-      const btnRes = div.querySelector(`[data-restore="${p.id}"]`);
-      if (btnRes) {
-        btnRes.addEventListener("click", async () => {
-          if (!confirm("¿Restaurar este pedido?")) return;
-          try {
-            await actualizarEstadoEnSheets(p.id, "pendiente");
-            await cargarPedidosCentral();
-          } catch (err) {
-            console.error(err);
-            alert("No se pudo restaurar.");
-          }
-        });
-      }
-
-      listaPedidosEl.appendChild(div);
-    });
-
-    guardarEstado();
-  }
-
-  function armarMensajeWhatsApp(pedido) {
-    const itemsTxt = (pedido.items || [])
-      .map((i) => `- ${i.nombre} x${i.cantidad} ($${i.precioUnitario.toFixed(2)} c/u)`)
-      .join("\n");
-
-    return `*NUEVO PEDIDO* ${pedido.id}
-${formatearFecha(pedido.creadoEn)}
-
-*Cliente:* ${pedido.comprador.nombre}
-*Tel:* ${pedido.comprador.telefono}
-*Dirección:* ${pedido.comprador.direccion}
-
-*Items:*
-${itemsTxt}
-
-*Total:* $${pedido.total.toFixed(2)}
-*Estado:* ${pedido.estado}`;
-  }
-
-  // Listeners (una sola vez)
-  btnVaciar.addEventListener("click", () => {
-    const ok = confirm("¿Seguro que quieres vaciar el carrito? Esta acción no se puede deshacer.");
-    if (!ok) return;
-    vaciarCarrito();
-  });
-
-  function exportarPedidosCSV() {
-    if (!pedidos || pedidos.length === 0) {
-      alert("No hay pedidos para exportar.");
-      return;
-    }
-
-    const filas = [];
-    pedidos.forEach((p) => {
-      (p.items || []).forEach((it) => {
-        filas.push({
-          pedido_id: p.id,
-          estado: p.estado,
-          creado: p.creadoEn || "",
-          cliente: p.comprador?.nombre || "",
-          telefono: p.comprador?.telefono || "",
-          direccion: p.comprador?.direccion || "",
-          item: it.nombre,
-          cantidad: it.cantidad,
-          precio_unitario: it.precioUnitario,
-          subtotal_item: it.cantidad * it.precioUnitario,
-          total_pedido: p.total,
-        });
-      });
-
-      if (!p.items || p.items.length === 0) {
-        filas.push({
-          pedido_id: p.id,
-          estado: p.estado,
-          creado: p.creadoEn || "",
-          cliente: p.comprador?.nombre || "",
-          telefono: p.comprador?.telefono || "",
-          direccion: p.comprador?.direccion || "",
-          item: "",
-          cantidad: "",
-          precio_unitario: "",
-          subtotal_item: "",
-          total_pedido: p.total,
-        });
-      }
-    });
-
-    const encabezados = Object.keys(filas[0]);
-    const escapeCSV = (v) => {
-      const s = String(v ?? "");
-      const needsQuotes = /[",\n]/.test(s);
-      const escaped = s.replace(/"/g, '""');
-      return needsQuotes ? `"${escaped}"` : escaped;
-    };
-
-    const csv = [encabezados.join(","), ...filas.map((row) => encabezados.map((k) => escapeCSV(row[k])).join(","))].join(
-      "\n"
-    );
-
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `pedidos_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    URL.revokeObjectURL(url);
-  }
-
-  btnExportar?.addEventListener("click", exportarPedidosCSV);
-
-  btnHistorial.addEventListener("click", () => {
-    viendoHistorial = !viendoHistorial;
-    btnHistorial.textContent = viendoHistorial ? "Ver activos" : "Ver historial";
-    renderPedidos();
-  });
-
-  let buscadorTimer = null;
-  buscadorEl.addEventListener("input", () => {
-    if (buscadorTimer) clearTimeout(buscadorTimer);
-    buscadorTimer = setTimeout(() => renderProductos(), 150);
-  });
-
-  listaProductosEl.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-id]");
-    if (!btn) return;
-
-    const id = parseInt(btn.dataset.id, 10);
-    if (Number.isNaN(id)) return;
-    agregarAlCarrito(id);
-  });
-
-  function mostrarCliente() {
-    vistaClienteEl.style.display = "block";
-    vistaAdminEl.style.display = "none";
-  }
-
-  function mostrarAdmin() {
-    vistaClienteEl.style.display = "none";
-    vistaAdminEl.style.display = "block";
-    checkoutFormEl.style.display = "none";
-  }
-
-  btnVistaCliente.addEventListener("click", mostrarCliente);
-
-  btnVistaAdmin.addEventListener("click", async () => {
-    if (vistaAdminEl.style.display === "block") return;
-
-    const intento = prompt("Ingresa el PIN de admin:");
-    if (intento !== ADMIN_PIN) {
-      alert("PIN incorrecto.");
-      return;
-    }
-
-    mostrarAdmin();
-
-    try {
-      await cargarPedidosCentral();
-    } catch (e) {
-      console.error(e);
-      alert("No pude cargar pedidos del sistema central.");
-    }
-  });
-
-  btnSalirAdmin.addEventListener("click", () => {
-    mostrarCliente();
-  });
-
-  // refresco admin cada 15s
-  setInterval(() => {
-    if (vistaAdminEl.style.display === "block") {
-      cargarPedidosCentral().catch(() => {});
-    }
-  }, 15000);
-
-  // Checkout
-  btnCheckout.addEventListener("click", () => {
-    if (carrito.length === 0) {
-      alert("Tu carrito está vacío.");
-      return;
-    }
-    checkoutFormEl.style.display = "block";
-  });
-
-  btnCancelar.addEventListener("click", () => {
-    checkoutFormEl.style.display = "none";
-  });
-
-  let enviandoPedido = false;
-
-  btnConfirmar.addEventListener(
-    "click",
-    async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (enviandoPedido) return;
-
-      const nombre = nombreEl.value.trim();
-      const telefono = telefonoEl.value.trim();
-      const direccion = direccionEl.value.trim();
-
-      if (!nombre || !telefono || !direccion) {
-        alert("Por favor llena nombre, teléfono y dirección.");
-        return;
-      }
-      if (carrito.length === 0) {
-        alert("Tu carrito está vacío.");
-        return;
-      }
-
-      enviandoPedido = true;
-      btnConfirmar.disabled = true;
-      const textoOriginal = btnConfirmar.textContent;
-      btnConfirmar.textContent = "Enviando...";
-
-      try {
-        const total = carrito.reduce((acc, item) => acc + item.precioUnitario * item.cantidad, 0);
-
-        const pedido = {
-          id: `PED-${String(folio).padStart(4, "0")}`,
-          items: carrito.map((i) => ({ ...i })),
-          total,
-          comprador: { nombre, telefono, direccion },
-          estado: "pendiente",
-          creadoEn: new Date().toISOString(),
-        };
-
-        // sube folio ANTES de enviar para evitar duplicados
-        folio += 1;
-
-        // guarda local
-        pedidos.unshift(pedido);
-        guardarEstado();
-
-        await guardarPedidoEnSheets(pedido);
-        await cargarPedidosCentral();
-
-        // WhatsApp
-        const texto = encodeURIComponent(armarMensajeWhatsApp(pedido));
-        window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${texto}`, "_blank");
-
-        // limpiar
-        vaciarCarrito();
-        nombreEl.value = "";
-        telefonoEl.value = "";
-        direccionEl.value = "";
-        checkoutFormEl.style.display = "none";
-
-        renderPedidos();
-        alert(`Pedido creado: ${pedido.id}`);
-      } catch (err) {
-        console.error(err);
-        alert("No se pudo enviar el pedido. Intenta de nuevo.");
-      } finally {
-        btnConfirmar.disabled = false;
-        btnConfirmar.textContent = textoOriginal;
-        enviandoPedido = false;
-      }
-    },
-    true
-  );
-
-  // Click en imagen agrega al carrito
-  document.addEventListener("click", function (e) {
-    const img = e.target.closest(".add-by-image");
-    if (!img) return;
-
-    const id = img.getAttribute("data-id");
-    const btn = document.querySelector(`button[data-id="${id}"]`);
-    if (btn) btn.click();
-  });
-
-  // Iniciar
-  cargarEstado();
-  renderProductos();
   renderCarrito();
-  renderPedidos();
-  mostrarCliente();
+}
+
+function renderCarrito() {
+  const el = document.getElementById("carrito-items");
+  const totalEl = document.getElementById("total");
+  el.innerHTML = "";
+
+  let total = 0;
+
+  carrito.forEach(i => {
+    total += i.precio * i.cantidad;
+    el.innerHTML += `<div>${i.nombre} x${i.cantidad}</div>`;
+  });
+
+  totalEl.textContent = total.toFixed(2);
+}
+
+// ================== CHECKOUT ==================
+document.getElementById("checkout").onclick = () => {
+  document.getElementById("checkout-form").style.display = "block";
+};
+
+document.getElementById("confirmar").onclick = () => {
+  if (carrito.length === 0) return alert("Carrito vacío");
+
+  const texto = carrito.map(i => `- ${i.nombre} x${i.cantidad}`).join("\n");
+  window.open(`https://wa.me/${WHATSAPP_NEGOCIO}?text=${encodeURIComponent(texto)}`);
+  carrito = [];
+  renderCarrito();
+};
+
+// ================== INIT ==================
+renderProductos();
+renderCarrito();
 </script>
+
 </div> <!-- cierre de .container -->
 </body>
 </html>
