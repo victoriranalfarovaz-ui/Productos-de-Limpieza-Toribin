@@ -347,28 +347,40 @@ let carrito = [];
 let pedidos = [];
 let folio = 1;
 let viendoHistorial = false;
-const payload = {
-  accion: "guardarPedido",
-  id: pedido.id,
-  cliente: pedido.comprador?.nombre || "",
-  telefono: pedido.comprador?.telefono || "",
-  direccion: pedido.comprador?.direccion || "",
-  items: pedido.items || [],
-  total: Number(pedido.total || 0),
-  estado: pedido.estado || "pendiente",
-  creadoEn: pedido.creadoEn || new Date().toISOString(),
-};
+
+async function guardarPedidoEnSheets(pedido) {
+  const payload = {
+    accion: "guardarPedido",
+    id: pedido.id,
+    cliente: pedido.comprador?.nombre || "",
+    telefono: pedido.comprador?.telefono || "",
+    direccion: pedido.comprador?.direccion || "",
+    items: Array.isArray(pedido.items) ? pedido.items : [],
+    total: Number(pedido.total || 0),
+    estado: pedido.estado || "pendiente",
+    creadoEn: pedido.creadoEn || new Date().toISOString(),
+  };
+
+  console.log("PAYLOAD A SHEETS:", payload);
+
   const res = await fetch(SHEETS_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    redirect: "follow",
   });
 
-  const data = await res.json();
+  const txt = await res.text();
+  console.log("RESPUESTA SHEETS (raw):", txt);
+
+  let data;
+  try { data = JSON.parse(txt); }
+  catch (e) { throw new Error("Sheets no devolvió JSON"); }
+
   if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
 }
-  
-  async function cargarPedidosCentral() {
+
+async function cargarPedidosCentral() {
   const res = await fetch(`${SHEETS_URL}?accion=obtenerPedidos`, { redirect: "follow" });
 
   const txt = await res.text();
@@ -390,14 +402,16 @@ const payload = {
       telefono: row.telefono || "",
       direccion: row.direccion || "",
     },
-    items: pedido.items
+    // si en sheets guardas items como "A x2 | B x1", aquí lo convertimos a array
     items: String(row.items || "")
       .split(" | ")
       .filter(Boolean)
+      .map((txt) => ({ nombre: txt, cantidad: 1, precioUnitario: 0 })),
   }));
 
   renderPedidos();
 }
+
 
   async function actualizarEstadoEnSheets(pedidoId, estado) {
   const res = await fetch(SHEETS_URL, {
