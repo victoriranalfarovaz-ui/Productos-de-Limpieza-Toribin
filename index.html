@@ -392,10 +392,10 @@ async function guardarPedidoEnSheets(pedido) {
       telefono: row.telefono || "",
       direccion: row.direccion || "",
     },
+    items: pedido.items
     items: String(row.items || "")
       .split(" | ")
       .filter(Boolean)
-      .map((txt) => ({ nombre: txt, cantidad: 1, precioUnitario: 0 })),
   }));
 
   renderPedidos();
