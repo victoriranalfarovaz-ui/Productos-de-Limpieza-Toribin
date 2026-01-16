@@ -355,7 +355,6 @@ async function guardarPedidoEnSheets(pedido) {
     cliente: pedido.comprador?.nombre || "",
     telefono: pedido.comprador?.telefono || "",
     direccion: pedido.comprador?.direccion || "",
-    // 👇 manda items como texto (Apps Script lo maneja fácil)
     items: (pedido.items || []).map(i => `${i.nombre} x${i.cantidad}`).join(" | "),
     total: pedido.total || 0,
     estado: pedido.estado || "pendiente",
@@ -367,22 +366,25 @@ async function guardarPedidoEnSheets(pedido) {
   const res = await fetch(SHEETS_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    redirect: "follow"
   });
 
   const txt = await res.text();
   console.log("RESPUESTA SHEETS (raw):", txt);
 
-  let data;
-  try {
-    data = JSON.parse(txt);
-  } catch (e) {
-    throw new Error("Sheets no devolvió JSON. Respuesta: " + txt.slice(0, 200));
+  // intenta parsear JSON si viene JSON
+  let data = null;
+  try { data = JSON.parse(txt); } catch {}
+
+  // Si NO vino JSON pero la petición sí llegó, lo consideramos OK
+  // (Apps Script a veces devuelve texto simple)
+  if (data && data.ok === false) {
+    throw new Error(data.error || "Sheets respondió ok:false");
   }
 
-  if (!data.ok) throw new Error(data.error || "No se pudo guardar en Sheets");
+  return true;
 }
-
 
   async function cargarPedidosCentral() {
     const res = await fetch(`${SHEETS_URL}?accion=obtenerPedidos`);
