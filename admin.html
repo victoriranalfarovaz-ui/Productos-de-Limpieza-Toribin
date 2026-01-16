@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin - Toribin</title>
+  <style>
+    body{ font-family: system-ui, Arial; background:#0b1220; color:#fff; margin:0; padding:20px; }
+    .container{ max-width: 980px; margin: 0 auto; }
+    .card{ border:1px solid rgba(255,255,255,.15); border-radius:16px; padding:14px; background:rgba(255,255,255,.06); }
+    .row{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+    button{ border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.08); color:#fff; padding:10px 12px; border-radius:12px; cursor:pointer; }
+    button:hover{ background:rgba(255,255,255,.12); }
+    .btn-primary{ background:rgba(110,231,255,.12); border-color:rgba(110,231,255,.35); }
+    .btn-danger{ background:rgba(255,107,107,.12); border-color:rgba(255,107,107,.35); }
+    .muted{ opacity:.8; }
+    .pill{ padding:6px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.2); }
+    select{ padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.25); color:#fff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Panel Admin - Toribin</h1>
+    <div class="muted" style="margin-bottom:12px;">Pedidos en tiempo real desde Google Sheets</div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:10px;">
+        <strong>Pedidos</strong>
+        <div class="row">
+          <button id="btnHistorial">Ver historial</button>
+          <button id="btnExportar" class="btn-primary">Exportar CSV</button>
+          <button id="btnSalir" class="btn-danger">Salir</button>
+        </div>
+      </div>
+
+      <div id="lista-pedidos" class="muted">Cargando...</div>
+    </div>
+  </div>
+
+<script>
+const SHEETS_URL = "PEGA_AQUI_TU_WEBAPP_URL";
+const ADMIN_PIN = "1234";
+
+let pedidos = [];
+let viendoHistorial = false;
+
+function formatearFecha(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleString("es-MX", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+}
+
+async function cargarPedidosCentral() {
+  const res = await fetch(`${SHEETS_URL}?accion=obtenerPedidos`, { redirect: "follow" });
+  const txt = await res.text();
+
+  let data;
+  try { data = JSON.parse(txt); }
+  catch { throw new Error("obtenerPedidos no devolvió JSON"); }
+
+  if (!data.ok) throw new Error(data.error || "No se pudieron cargar pedidos");
+
+  pedidos = (data.pedidos || []).map((row) => ({
+    id: row.pedido_id || "",
+    estado: row.estado || "pendiente",
+    creadoEn: row.fecha || "",
+    total: Number(row.total || 0),
+    comprador: {
+      nombre: row.cliente || "",
+      telefono: row.telefono || "",
+      direccion: row.direccion || "",
+    },
+    items: String(row.items || "")
+      .split(" | ")
+      .filter(Boolean)
+      .map((t) => ({ nombre: t, cantidad: 1, precioUnitario: 0 })),
+  }));
+
+  renderPedidos();
+}
+
+async function actualizarEstadoEnSheets(pedidoId, estado) {
+  const res = await fetch(SHEETS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ accion: "actualizarEstado", pedidoId, estado }),
+    redirect: "follow",
+  });
+
+  const txt = await res.text();
+  let data;
+  try { data = JSON.parse(txt); }
+  catch { throw new Error("actualizarEstado no devolvió JSON"); }
+
+  if (!data.ok) throw new Error(data.error || "No se pudo actualizar estado");
+}
+
+function renderPedidos() {
+  const el = document.getElementById("lista-pedidos");
+  el.className = "";
+  el.innerHTML = "";
+
+  const lista = viendoHistorial
+    ? pedidos.filter(p => p.estado === "archivado")
+    : pedidos.filter(p => p.estado !== "archivado");
+
+  if (lista.length === 0) {
+    el.textContent = viendoHistorial ? "No hay pedidos archivados." : "No hay pedidos.";
+    el.className = "muted";
+    return;
+  }
+
+  lista.forEach((p) => {
+    const div = document.createElement("div");
+    div.style.borderBottom = "1px solid rgba(255,255,255,.12)";
+    div.style.padding = "12px 0";
+
+    const items = (p.items || []).map(i => i.nombre).join(", ");
+
+    div.innerHTML = `
+      <div class="row">
+        <strong>${p.id}</strong>
+        <span class="pill">Estado: ${p.estado}</span>
+      </div>
+      <div style="margin-top:6px;">
+        <div><strong>Cliente:</strong> ${p.comprador.nombre} (${p.comprador.telefono})</div>
+        <div><strong>Dirección:</strong> ${p.comprador.direccion}</div>
+        <div><strong>Items:</strong> ${items}</div>
+        <div><strong>Total:</strong> $${Number(p.total).toFixed(2)}</div>
+        <div class="muted" style="margin-top:6px;"><strong>Creado:</strong> ${formatearFecha(p.creadoEn)}</div>
+      </div>
+
+      ${viendoHistorial ? `
+        <div class="row" style="margin-top:10px; justify-content:flex-end;">
+          <button class="btn-primary" data-restore="${p.id}">Restaurar</button>
+        </div>
+      ` : `
+        <div class="row" style="margin-top:10px;">
+          <label class="muted">Cambiar estado:</label>
+          <select data-id="${p.id}">
+            <option value="pendiente" ${p.estado==="pendiente"?"selected":""}>pendiente</option>
+            <option value="en_camino" ${p.estado==="en_camino"?"selected":""}>en_camino</option>
+            <option value="entregado" ${p.estado==="entregado"?"selected":""}>entregado</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:10px; justify-content:flex-end;">
+          <button class="btn-danger" data-archive="${p.id}">Archivar</button>
+        </div>
+      `}
+    `;
+
+    const sel = div.querySelector(`select[data-id="${p.id}"]`);
+    if (sel) {
+      sel.addEventListener("change", async (e) => {
+        try {
+          await actualizarEstadoEnSheets(p.id, e.target.value);
+          await cargarPedidosCentral();
+        } catch (err) {
+          console.error(err);
+          alert("No se pudo actualizar estado");
+        }
+      });
+    }
+
+    const arch = div.querySelector(`[data-archive="${p.id}"]`);
+    if (arch) {
+      arch.addEventListener("click", async () => {
+        if (!confirm("¿Archivar este pedido?")) return;
+        try {
+          await actualizarEstadoEnSheets(p.id, "archivado");
+          await cargarPedidosCentral();
+        } catch (err) {
+          console.error(err);
+          alert("No se pudo archivar");
+        }
+      });
+    }
+
+    const restore = div.querySelector(`[data-restore="${p.id}"]`);
+    if (restore) {
+      restore.addEventListener("click", async () => {
+        if (!confirm("¿Restaurar este pedido?")) return;
+        try {
+          await actualizarEstadoEnSheets(p.id, "pendiente");
+          await cargarPedidosCentral();
+        } catch (err) {
+          console.error(err);
+          alert("No se pudo restaurar");
+        }
+      });
+    }
+
+    el.appendChild(div);
+  });
+}
+
+// Exportar CSV
+function exportarCSV() {
+  if (!pedidos.length) return alert("No hay pedidos para exportar.");
+  const filas = [];
+  pedidos.forEach(p => {
+    filas.push({
+      pedido_id: p.id,
+      estado: p.estado,
+      fecha: p.creadoEn,
+      cliente: p.comprador.nombre,
+      telefono: p.comprador.telefono,
+      direccion: p.comprador.direccion,
+      items: (p.items||[]).map(x=>x.nombre).join(" | "),
+      total: p.total
+    });
+  });
+
+  const headers = Object.keys(filas[0]);
+  const esc = (v) => {
+    const s = String(v ?? "");
+    const needs = /[",\n]/.test(s);
+    const out = s.replace(/"/g,'""');
+    return needs ? `"${out}"` : out;
+  };
+  const csv = [headers.join(","), ...filas.map(r => headers.map(k => esc(r[k])).join(","))].join("\n");
+  const blob = new Blob(["\uFEFF"+csv], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `pedidos_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// PIN al entrar
+const intento = prompt("Ingresa el PIN de admin:");
+if (intento !== ADMIN_PIN) {
+  alert("PIN incorrecto.");
+  window.location.href = "./";
+} else {
+  cargarPedidosCentral().catch(e => { console.error(e); alert("No pude cargar pedidos"); });
+  setInterval(() => cargarPedidosCentral().catch(()=>{}), 15000);
+}
+
+document.getElementById("btnHistorial").addEventListener("click", () => {
+  viendoHistorial = !viendoHistorial;
+  document.getElementById("btnHistorial").textContent = viendoHistorial ? "Ver activos" : "Ver historial";
+  renderPedidos();
+});
+document.getElementById("btnExportar").addEventListener("click", exportarCSV);
+document.getElementById("btnSalir").addEventListener("click", () => window.location.href = "./");
+</script>
+</body>
+</html>
